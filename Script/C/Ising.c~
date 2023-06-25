@@ -1,0 +1,67 @@
+/*
+ * Ising.c
+ *
+ * Generates the transfer matrix.
+ *
+ * by Aslak Stubsgaard, 2016.
+ */
+
+ /////////////////////////////////////////////////////////////////////////////
+
+
+#include <math.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_blas.h>
+
+#include "DefinePrint.h"
+
+// Generates the transfer matrix
+void isingP(int n, gsl_matrix* P, double J, double h)
+{
+	int N=pow(2,pow(n,2));
+	int m=pow(n,2), rayi[m], rayj[m];
+
+	double tmp1=0, tmp2=0, tmp3=0;
+
+	// Construct P
+	for(int i=0; i<N; i++)
+	{
+		// write i in binary form in the array rayi, on opposite order and with minus one instead of 0.
+		for (int k = pow(n,2)-1; k>=0 ; k--)
+		{
+    	rayi[k] = i & (1 << k) ? 1 : -1;
+		} // this could be optimized by a code that only updates the nessasary spaces and initiates the array to minus one.
+
+		for(int j=0; j<N; j++)
+		{
+			// write j in binary form in the array rayj, on opposite order and with minus one instead of 0.
+			for (int k = pow(n,2)-1; k>=0 ; k--)
+			{
+	    	rayj[k] = j & (1 << k) ? 1 : -1;
+			}
+
+			// interaction between planes
+			for(int k=0; k<m; k++)
+			{
+				tmp1+=rayi[k]*rayj[k];
+			}
+
+			for(int k=0; k<pow(n,2); k++)
+			{
+				int p=k % n;
+				int q=floor(k/n);
+				tmp2+=rayi[q*n+p]*rayi[q*n+p+1-(p+1)*(p==(n-1))];
+				tmp2+=rayi[q*n+p]*rayi[(q+1-(q+1)*(q==(n-1)))*n+p];
+				tmp3+=rayj[q*n+p]*rayj[q*n+p+1-(p+1)*(p==(n-1))];
+				tmp3+=rayj[q*n+p]*rayj[(q+1-(q+1)*(q==(n-1)))*n+p];
+			}
+
+			// Enter the specific permutation's interaction
+			gsl_matrix_set(P,i,j, exp(-J*tmp1-0.5*h*(tmp2+tmp3)) );
+
+			// reset the tempurary double
+			tmp1=0, tmp2=0, tmp3=0;
+		}
+	}
+}
